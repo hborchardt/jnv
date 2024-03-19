@@ -59,3 +59,52 @@ jobs:
         with:
           command: build
           args: --bins
+  test-win:
+    name: test-win
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            autotools
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-clang-15
+            mingw-w64-x86_64-lldb
+            mingw-w64-x86_64-rust
+            gettext
+            lld
+            libtool
+            git
+            wget
+      - name: Set default compiler to clang
+        run: |
+          echo "CC=clang-15" >> $GITHUB_ENV
+          echo "CXX=clang++-15" >> $GITHUB_ENV
+      - run: cargo build --bins
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -- --nocapture --format pretty
